@@ -1,17 +1,5 @@
-# Copyright (C) 2024 Charles O. Goddard
-#
-# This software is free software: you can redistribute it and/or
-# modify it under the terms of the GNU Lesser General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This software is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-# Lesser General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program. If not, see http://www.gnu.org/licenses/.
+# Copyright (C) 2025 Arcee AI
+# SPDX-License-Identifier: BUSL-1.1
 
 import binascii
 import logging
@@ -83,7 +71,10 @@ class ModelReference(BaseModel, frozen=True):
     override_architecture: Optional[str] = None
 
     def merged(
-        self, cache_dir: Optional[str] = None, trust_remote_code: bool = False
+        self,
+        cache_dir: Optional[str] = None,
+        trust_remote_code: bool = False,
+        lora_merge_dtype: Optional[str] = None,
     ) -> "ModelReference":
         """Merge the LoRA if applicable and return a reference to the result."""
         if not self.lora:
@@ -107,7 +98,7 @@ class ModelReference(BaseModel, frozen=True):
             model = auto_cls.from_pretrained(
                 self.model.path,
                 revision=self.model.revision,
-                torch_dtype=torch.float16,
+                torch_dtype=dtype_from_name(lora_merge_dtype),
                 low_cpu_mem_usage=True,
                 trust_remote_code=trust_remote_code,
             )
@@ -178,6 +169,12 @@ class ModelReference(BaseModel, frozen=True):
 
     @model_serializer()
     def serialize(self):
+        if self.override_architecture is not None:
+            return {
+                "model": self.model,
+                "lora": self.lora,
+                "override_architecture": self.override_architecture,
+            }
         res = str(self)
         if '"' in res or " " in res:
             return self
